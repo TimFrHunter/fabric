@@ -128,3 +128,41 @@ func GetECPublicKey(priv bccsp.Key) (*ecdsa.PublicKey, error) {
 	}
 	return ecPubKey.(*ecdsa.PublicKey), nil
 }
+
+
+// LoadPrivateKey loads a private key from file in keystorePath
+func LoadPrivateKeyFromFile(keystorePath string, rootPrivByte []byte) (bccsp.Key, crypto.Signer, error) {
+	var err error
+	var priv bccsp.Key
+	var s crypto.Signer
+
+	opts := &factory.FactoryOpts{
+		ProviderName: "SW",
+		SwOpts: &factory.SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
+
+			FileKeystore: &factory.FileKeystoreOpts{
+				KeyStorePath: keystorePath,
+			},
+		},
+	}
+
+	csp, err := factory.GetBCCSPFromOpts(opts)
+	
+	block, _ := pem.Decode(rootPrivByte)
+	if block == nil {
+		return nil, nil, errors.Errorf("%s: wrong PEM encoding", rootPrivByte)
+	}
+	priv, err = csp.KeyImport(block.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	s, err = signer.New(csp, priv)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return priv, s, err
+}

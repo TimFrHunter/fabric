@@ -19,7 +19,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"fmt"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 )
@@ -41,6 +43,9 @@ type CA struct {
 // baseDir/name
 func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddress, postalCode string) (*CA, error) {
 
+	fmt.Println("CA Normal")
+	//fmt.Println(rootCaCert)
+	os.Exit(-1)
 	var response error
 	var ca *CA
 
@@ -92,6 +97,105 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 		}
 	}
 	return ca, response
+}
+
+func NewCARoot(baseDir, org, name, country, province, locality, orgUnit, streetAddress, postalCode string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
+
+	fmt.Println("Ca Custom Root")
+	//fmt.Println(rootCaCert)
+	var response error
+	var ca *CA
+
+	err := os.MkdirAll(baseDir, 0755)
+	if err == nil {
+		priv, signer, err := csp.GeneratePrivateKey(baseDir)
+
+		response = err
+		if err == nil {
+			// get public signing certificate
+			ecPubKey, err := csp.GetECPublicKey(priv)
+			response = err
+			if err == nil {
+				template := x509Template()
+				//this is a CA
+				template.IsCA = true
+				template.KeyUsage |= x509.KeyUsageDigitalSignature |
+					x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
+					x509.KeyUsageCRLSign
+				template.ExtKeyUsage = []x509.ExtKeyUsage{
+					x509.ExtKeyUsageClientAuth,
+					x509.ExtKeyUsageServerAuth,
+				}
+
+				//set the organization for the subject
+				subject := subjectTemplateAdditional(country, province, locality, orgUnit, streetAddress, postalCode)
+				subject.Organization = []string{org}
+				subject.CommonName = name
+
+				template.Subject = subject
+				template.SubjectKeyId = priv.SKI()
+
+				x509Cert, err := genCertificateECDSA(baseDir, name, &template, rootCert,
+					ecPubKey, rootSigner)
+				response = err
+				if err == nil {
+					ca = &CA{
+						Name:               name,
+						Signer:             signer,
+						SignCert:           x509Cert,
+						Country:            country,
+						Province:           province,
+						Locality:           locality,
+						OrganizationalUnit: orgUnit,
+						StreetAddress:      streetAddress,
+						PostalCode:         postalCode,
+					}
+				}
+			}
+		}
+	}
+	return ca, response
+}
+
+func GetRootCert(rootCaCertData **os.File) (certX509 *x509.Certificate) {
+	
+	// Cert
+	certData, err := ioutil.ReadAll(*rootCaCertData)
+	if err != nil {
+		fmt.Errorf("Error reading configuration root ca: %s", err)
+	}
+	
+	certBlock, _ := pem.Decode([]byte(certData))
+	if certBlock == nil {
+		fmt.Println(*rootCaCertData)
+		panic("failed to parse certificate PEM la")
+	}
+	certX509, err = x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		panic("failed to parse certificate: " + err.Error())
+	}
+
+	// PublicKey
+	//publicKey = certX509.PublicKey.(*ecdsa.PublicKey)
+
+
+	return certX509
+}
+
+func GetRootPriv(rootCaPriv **os.File )([]byte, error){
+	key, err := ioutil.ReadAll(*rootCaPriv)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func GetRootPrivAndSign(baseDir string, rootPrivByte []byte)(priv bccsp.Key, sign crypto.Signer){
+	
+	// Private Key
+	priv, sign, _ = csp.LoadPrivateKeyFromFile(baseDir, rootPrivByte)
+	
+	return priv, sign
 }
 
 // SignCertificate creates a signed certificate based on a built-in template
