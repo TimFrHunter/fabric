@@ -191,9 +191,12 @@ func GetRootPriv(rootCaPriv **os.File )([]byte, error){
 }
 
 func GetRootPrivAndSign(baseDir string, rootPrivByte []byte)(priv bccsp.Key, sign crypto.Signer){
-	
+	var err error
 	// Private Key
-	priv, sign, _ = csp.LoadPrivateKeyFromFile(baseDir, rootPrivByte)
+	priv, sign, err = csp.LoadPrivateKeyFromFile(baseDir, rootPrivByte)
+	if err != nil {
+		fmt.Println(err)
+	}	
 	
 	return priv, sign
 }
