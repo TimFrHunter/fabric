@@ -460,6 +460,9 @@ func ChaincodeInvokeOrQuery(
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
+	
+	
+
 	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
@@ -472,6 +475,7 @@ func ChaincodeInvokeOrQuery(
 		}
 		responses = append(responses, proposalResp)
 	}
+	
 
 	if len(responses) == 0 {
 		// this should only happen if some new code has introduced a bug
@@ -486,6 +490,21 @@ func ChaincodeInvokeOrQuery(
 			if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
 				return proposalResp, nil
 			}
+
+			// UPDATED CUSTOM 
+				type EndorssedResp struct {
+					Txid	string	`json:"txid"`
+					Status	int32	`json:"status"`
+				}
+				endorssedResp := EndorssedResp{txid, responses[0].Response.Status}
+				endorssedJson, err := json.Marshal(endorssedResp)
+				if err != nil {
+					return nil, errors.WithMessage(err, "Failed to generate json for endorssed responses")
+				}
+				logger.Infof("%s", string(endorssedJson))
+			// END UPDATED CUSTOM
+
+
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, responses...)
 			if err != nil {

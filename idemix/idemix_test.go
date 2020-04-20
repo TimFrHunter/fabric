@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"fmt"
 	"bytes"
 	"testing"
 
@@ -15,6 +16,7 @@ import (
 )
 
 func TestIdemix(t *testing.T) {
+	fmt.Println("Hello")
 	// Test weak BB sigs:
 	// Test KeyGen
 	rng, err := GetRand()
@@ -82,11 +84,13 @@ func TestIdemix(t *testing.T) {
 	sk := RandModOrder(rng)
 	ni := RandModOrder(rng)
 	m := NewCredRequest(sk, BigToBytes(ni), key.Ipk, rng)
+	fmt.Println(m)
 
 	cred, err := NewCredential(key, m, attrs, rng)
 	assert.NoError(t, err, "Failed to issue a credential: \"%s\"", err)
 
 	assert.NoError(t, cred.Ver(sk, key.Ipk), "credential should be valid")
+	fmt.Println(cred.Ver(sk, key.Ipk))
 
 	// Issuing a credential with the incorrect amount of attributes should fail
 	_, err = NewCredential(key, m, []*FP256BN.BIG{}, rng)
