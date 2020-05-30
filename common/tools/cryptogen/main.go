@@ -13,9 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
-	
+
 	"crypto/x509"
-	
 
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
@@ -83,7 +82,6 @@ type Config struct {
 	PeerOrgs    []OrgSpec `yaml:"PeerOrgs"`
 }
 
-
 var defaultConfig = `
 # ---------------------------------------------------------------------------
 # "OrdererOrgs" - Definition of organizations managing orderer nodes
@@ -110,7 +108,7 @@ PeerOrgs:
   # Org1
   # ---------------------------------------------------------------------------
   - Name: Org1
-    Domain: pomme.com
+    Domain: hunter.com
     EnableNodeOUs: true
 
     # ---------------------------------------------------------------------------
@@ -193,13 +191,13 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   # Org2: See "Org1" for full specification
   # ---------------------------------------------------------------------------
-  - Name: Org2
-    Domain: org2.example.com
-    EnableNodeOUs: true
-    Template:
-      Count: 1
-    Users:
-      Count: 1
+  #- Name: Org2
+  #  Domain: org2.example.com
+  #  EnableNodeOUs: true
+  #  Template:
+  #    Count: 1
+  #  Users:
+  #    Count: 1
 `
 
 //command line flags
@@ -209,9 +207,8 @@ var (
 	gen           = app.Command("generate", "Generate key material")
 	outputDir     = gen.Flag("output", "The output directory in which to place artifacts").Default("crypto-config").String()
 	genConfigFile = gen.Flag("config", "The configuration template to use").File()
-	rootCaCert	  = gen.Flag("rootcacert", "The root CA certificate file").File()
-	rootCaPriv	  = gen.Flag("rootcapriv", "The root CA private key file").File()
-
+	rootCaCert    = gen.Flag("rootcacert", "The root CA certificate file").File()
+	rootCaPriv    = gen.Flag("rootcapriv", "The root CA private key file").File()
 
 	showtemplate = app.Command("showtemplate", "Show the default configuration template")
 
@@ -220,7 +217,7 @@ var (
 	inputDir      = ext.Flag("input", "The input directory in which existing network place").Default("crypto-config").String()
 	extConfigFile = ext.Flag("config", "The configuration template to use").File()
 
-	rootCert *x509.Certificate
+	rootCert     *x509.Certificate
 	rootPrivByte []byte
 )
 
@@ -246,7 +243,6 @@ func main() {
 	}
 
 }
-
 
 func getConfig() (*Config, error) {
 	var configData string
@@ -389,7 +385,6 @@ func extendOrdererOrg(orgSpec OrgSpec) {
 	}
 }
 
-
 func generate() {
 	var err error
 	if *rootCaCert != nil {
@@ -528,11 +523,10 @@ func renderOrgSpec(orgSpec *OrgSpec, prefix string) error {
 	return nil
 }
 
-
 func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	var err error
 	var signCA, tlsCA *ca.CA
-	
+
 	orgName := orgSpec.Domain
 
 	fmt.Println(orgName)
@@ -547,8 +541,9 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 
 	if *rootCaCert != nil {
 		_, rootSigner := ca.GetRootPrivAndSign(caDir, rootPrivByte)
-		signCA, err = ca.NewCARoot(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, rootCert, rootSigner)
-	}else{	// generate signing CA
+		signCA, err = ca.GetImportedCa(caDir, rootCert, rootSigner)
+		//signCA, err = ca.NewCARoot(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, rootCert, rootSigner)
+	} else { // generate signing CA
 		signCA, err = ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}
 	if err != nil {
@@ -556,8 +551,10 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 	if *rootCaCert != nil {
-		tlsCA = signCA
-	}else{// generate TLS CA
+		_, rootSigner := ca.GetRootPrivAndSign(caDir, rootPrivByte)
+		tlsCA, err = ca.GetImportedTLSCa(tlsCADir, rootCert, rootSigner)
+
+	} else { // generate TLS CA
 		tlsCA, err = ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}
 	if err != nil {
@@ -671,11 +668,11 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	orderersDir := filepath.Join(orgDir, "orderers")
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
-	
+
 	if *rootCaCert != nil {
 		_, rootSigner := ca.GetRootPrivAndSign(caDir, rootPrivByte)
 		signCA, err = ca.NewCARoot(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, rootCert, rootSigner)
-	} else {// generate signing CA
+	} else { // generate signing CA
 		signCA, err = ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}
 	if err != nil {
@@ -684,7 +681,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	}
 	if *rootCaCert != nil {
 		tlsCA = signCA
-	}else{ // generate TLS CA
+	} else { // generate TLS CA
 		tlsCA, err = ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}
 	if err != nil {

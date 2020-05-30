@@ -12,6 +12,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -19,7 +21,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -99,9 +100,102 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 	return ca, response
 }
 
+// GetImportedCa Import ca, utilise le ca importé directement, contrairement au NewCARoot
+func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
+	rootCaCertArg := strings.Split(os.Args[2], "=")[1]
+	rootCaKeyArg := strings.Split(os.Args[3], "=")[1]
+
+	// parsing
+	var subject pkix.Name = rootCert.Subject
+
+	var ca *CA
+
+	ca = &CA{
+		Name:               subject.CommonName,
+		Signer:             rootSigner,
+		SignCert:           rootCert,
+		Country:            subject.Country[0],
+		Province:           subject.Province[0],
+		Locality:           subject.Locality[0],
+		OrganizationalUnit: "", // subject.Organization[0],
+		StreetAddress:      "", //subject.StreetAddress[0],
+		PostalCode:         "", //subject.PostalCode[0],
+	}
+
+	err := writeFileInFolder(rootCaCertArg, subject.CommonName, baseDir)
+	if err != nil {
+		return ca, err
+	}
+	err = writeFileInFolder(rootCaKeyArg, "privateKeyName", baseDir)
+	if err != nil {
+		return ca, err
+	}
+
+	return ca, nil
+}
+
+// GetImportedTLSCa same
+func GetImportedTLSCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
+	rootCaCertArg := strings.Split(os.Args[2], "=")[1]
+	rootCaKeyArg := strings.Split(os.Args[3], "=")[1]
+
+	// parsing
+	var subject pkix.Name = rootCert.Subject
+
+	var ca *CA
+
+	ca = &CA{
+		Name:               subject.CommonName,
+		Signer:             rootSigner,
+		SignCert:           rootCert,
+		Country:            subject.Country[0],
+		Province:           subject.Province[0],
+		Locality:           subject.Locality[0],
+		OrganizationalUnit: "", // subject.Organization[0],
+		StreetAddress:      "", //subject.StreetAddress[0],
+		PostalCode:         "", //subject.PostalCode[0],
+	}
+
+	err := writeFileInFolder(rootCaCertArg, subject.CommonName, baseDir)
+	if err != nil {
+		return ca, err
+	}
+	err = writeFileInFolder(rootCaKeyArg, "privateKeyName", baseDir)
+	if err != nil {
+		return ca, err
+	}
+
+	return ca, nil
+}
+
+func writeFileInFolder(input, fileName, dir string) error {
+	var err error
+	//write Ca in folder
+	source, err := os.Open(input)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+	// Creation de dossier si necessair (tls)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.Mkdir(dir, 0755)
+	}
+	fileNameDst := filepath.Join(dir, fileName+".pem") //+"-cert.pem")
+	destination, err := os.Create(fileNameDst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+	_, err = io.Copy(destination, source)
+	if err != nil {
+	}
+	return nil
+}
+
+// NewCARoot si on veut créer des Ca depuis un existant
 func NewCARoot(baseDir, org, name, country, province, locality, orgUnit, streetAddress, postalCode string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
 
-	fmt.Println("Ca Custom Root")
+	//fmt.Println("Ca Custom Root")
 	//fmt.Println(rootCaCert)
 	var response error
 	var ca *CA
@@ -158,13 +252,13 @@ func NewCARoot(baseDir, org, name, country, province, locality, orgUnit, streetA
 }
 
 func GetRootCert(rootCaCertData **os.File) (certX509 *x509.Certificate) {
-	
+
 	// Cert
 	certData, err := ioutil.ReadAll(*rootCaCertData)
 	if err != nil {
 		fmt.Errorf("Error reading configuration root ca: %s", err)
 	}
-	
+
 	certBlock, _ := pem.Decode([]byte(certData))
 	if certBlock == nil {
 		fmt.Println(*rootCaCertData)
@@ -178,11 +272,10 @@ func GetRootCert(rootCaCertData **os.File) (certX509 *x509.Certificate) {
 	// PublicKey
 	//publicKey = certX509.PublicKey.(*ecdsa.PublicKey)
 
-
 	return certX509
 }
 
-func GetRootPriv(rootCaPriv **os.File )([]byte, error){
+func GetRootPriv(rootCaPriv **os.File) ([]byte, error) {
 	key, err := ioutil.ReadAll(*rootCaPriv)
 	if err != nil {
 		return nil, err
@@ -190,14 +283,14 @@ func GetRootPriv(rootCaPriv **os.File )([]byte, error){
 	return key, nil
 }
 
-func GetRootPrivAndSign(baseDir string, rootPrivByte []byte)(priv bccsp.Key, sign crypto.Signer){
+func GetRootPrivAndSign(baseDir string, rootPrivByte []byte) (priv bccsp.Key, sign crypto.Signer) {
 	var err error
 	// Private Key
 	priv, sign, err = csp.LoadPrivateKeyFromFile(baseDir, rootPrivByte)
 	if err != nil {
 		fmt.Println(err)
-	}	
-	
+	}
+
 	return priv, sign
 }
 
