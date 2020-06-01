@@ -102,8 +102,8 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 
 // GetImportedCa Import ca, utilise le ca importé directement, contrairement au NewCARoot
 func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
-	rootCaCertArg := strings.Split(os.Args[2], "=")[1]
-	rootCaKeyArg := strings.Split(os.Args[3], "=")[1]
+	rootCaCertArg := strings.Split(os.Args[3], "=")[1]
+	rootCaKeyArg := strings.Split(os.Args[4], "=")[1]
 
 	// parsing
 	var subject pkix.Name = rootCert.Subject
