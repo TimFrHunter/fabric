@@ -671,7 +671,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 
 	if *rootCaCert != nil {
 		_, rootSigner := ca.GetRootPrivAndSign(caDir, rootPrivByte)
-		signCA, err = ca.NewCARoot(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, rootCert, rootSigner)
+		signCA, err = ca.GetImportedTLSCa(caDir, rootCert, rootSigner)	
 	} else { // generate signing CA
 		signCA, err = ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}
@@ -680,7 +680,8 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 	if *rootCaCert != nil {
-		tlsCA = signCA
+		_, rootSigner := ca.GetRootPrivAndSign(caDir, rootPrivByte)
+		tlsCA, err = ca.GetImportedTLSCa(caDir, rootCert, rootSigner)
 	} else { // generate TLS CA
 		tlsCA, err = ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}

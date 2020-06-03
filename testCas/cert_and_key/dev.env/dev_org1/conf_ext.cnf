@@ -1,0 +1,5 @@
+basicConstraints = CA:TRUE
+keyUsage = Digital Signature, Key Encipherment, Certificate Sign, CRL Sign
+extendedKeyUsage = TLS Web Client Authentication, TLS Web Server Authentication
+subjectKeyIdentifier = hash
+

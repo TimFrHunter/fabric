@@ -43,7 +43,10 @@
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
-
+## custom
+CGO_CFLAGS=" "
+GOBIN=/home/tim/go/src/github.com/hyperledger/fabric/.build/bin go install -tags "" -ldflags "-X github.com/hyperledger/fabric/common/tools/cryptogen/metadata.CommitSHA=e3a6933f5" github.com/hyperledger/fabric/common/tools/cryptogen
+## end Customm
 BASE_VERSION = 1.4.6
 PREV_VERSION = 1.4.5
 CHAINTOOL_RELEASE=1.1.3

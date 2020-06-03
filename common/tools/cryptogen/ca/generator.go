@@ -136,8 +136,8 @@ func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto
 
 // GetImportedTLSCa same
 func GetImportedTLSCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
-	rootCaCertArg := strings.Split(os.Args[2], "=")[1]
-	rootCaKeyArg := strings.Split(os.Args[3], "=")[1]
+	rootCaCertArg := strings.Split(os.Args[3], "=")[1]
+	rootCaKeyArg := strings.Split(os.Args[4], "=")[1]
 
 	// parsing
 	var subject pkix.Name = rootCert.Subject
@@ -180,7 +180,7 @@ func writeFileInFolder(input, fileName, dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.Mkdir(dir, 0755)
 	}
-	fileNameDst := filepath.Join(dir, fileName+".pem") //+"-cert.pem")
+	fileNameDst := filepath.Join(dir, fileName+"-cert.pem") //+"-cert.pem")
 	destination, err := os.Create(fileNameDst)
 	if err != nil {
 		return err
