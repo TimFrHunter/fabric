@@ -102,14 +102,18 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 
 // GetImportedCa Import ca, utilise le ca importé directement, contrairement au NewCARoot
 func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto.Signer) (*CA, error) {
+
+	// fmt.Println(os.Args)
+	// fmt.Println("------------")
+	// fmt.Println(os.Args[3])
+	// fmt.Println(strings.Split(os.Args[3], "=")[1])
+
 	rootCaCertArg := strings.Split(os.Args[3], "=")[1]
 	rootCaKeyArg := strings.Split(os.Args[4], "=")[1]
 
 	// parsing
 	var subject pkix.Name = rootCert.Subject
-
 	var ca *CA
-
 	ca = &CA{
 		Name:               subject.CommonName,
 		Signer:             rootSigner,
@@ -117,9 +121,10 @@ func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto
 		Country:            subject.Country[0],
 		Province:           subject.Province[0],
 		Locality:           subject.Locality[0],
-		OrganizationalUnit: "", // subject.Organization[0],
+		OrganizationalUnit: "", //subject.OrganizationalUnit[0],
 		StreetAddress:      "", //subject.StreetAddress[0],
 		PostalCode:         "", //subject.PostalCode[0],
+
 	}
 
 	err := writeFileInFolder(rootCaCertArg, subject.CommonName, baseDir)
@@ -151,7 +156,7 @@ func GetImportedTLSCa(baseDir string, rootCert *x509.Certificate, rootSigner cry
 		Country:            subject.Country[0],
 		Province:           subject.Province[0],
 		Locality:           subject.Locality[0],
-		OrganizationalUnit: "", // subject.Organization[0],
+		OrganizationalUnit: "", //subject.OrganizationalUnit[0],
 		StreetAddress:      "", //subject.StreetAddress[0],
 		PostalCode:         "", //subject.PostalCode[0],
 	}
@@ -180,7 +185,12 @@ func writeFileInFolder(input, fileName, dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		os.Mkdir(dir, 0755)
 	}
-	fileNameDst := filepath.Join(dir, fileName+"-cert.pem") //+"-cert.pem")
+	var fileNameDst string
+	if fileName == "privateKeyName" {
+		fileNameDst = filepath.Join(dir, fileName+"_sk") //+"-cert.pem")	
+	} else {
+		fileNameDst = filepath.Join(dir, fileName+"-cert.pem") //+"-cert.pem")
+	}
 	destination, err := os.Create(fileNameDst)
 	if err != nil {
 		return err

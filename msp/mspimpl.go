@@ -787,6 +787,9 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 			// cert is a root CA certificate
 			parentCert = cert
 		} else {
+			fmt.Println("sanitize info about chain object/array ")
+			fmt.Println(chain)
+			fmt.Println("end")
 			parentCert = chain[1]
 		}
 

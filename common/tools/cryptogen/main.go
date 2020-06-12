@@ -222,6 +222,7 @@ var (
 )
 
 func main() {
+	fmt.Println("Start cryptogen")
 	kingpin.Version("0.0.1")
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
 
