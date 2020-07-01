@@ -3,15 +3,10 @@
 
 package peer // import "github.com/hyperledger/fabric/protos/peer"
 
-import (
-	fmt "fmt"
-
-	proto "github.com/golang/protobuf/proto"
-
-	math "math"
-
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
-)
+import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
+import timestamp "github.com/golang/protobuf/ptypes/timestamp"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

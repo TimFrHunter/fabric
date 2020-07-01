@@ -595,6 +595,7 @@ func ComputeTxID(nonce, creator []byte) (string, error) {
 // over the concatenation of nonce and creator.
 func CheckTxID(txid string, nonce, creator []byte) error {
 	logger.Infof("---- CheckTxId ----")
+	// ok
 	return nil
 	// computedTxID, err := ComputeTxID(nonce, creator)
 	// if err != nil {
