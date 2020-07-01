@@ -117,6 +117,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	// Verify that the transaction ID has been computed properly.
 	// This check is needed to ensure that the lookup into the ledger
 	// for the same TxID catches duplicates.
+	putilsLogger.Infof("---- core/common/validation/msgvalidation/ ValidateProposalMessage() -----------")
 	err = utils.CheckTxID(
 		chdr.TxId,
 		shdr.Nonce,
@@ -411,6 +412,8 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
+		putilsLogger.Infof("---- core/common/validation/msgvalidation/ ValidateTransaction() 0 -----------")
+
 		err = utils.CheckTxID(
 			chdr.TxId,
 			shdr.Nonce,
@@ -446,6 +449,8 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
+		putilsLogger.Infof("---- core/common/validation/msgvalidation/ ValidateTransaction() 1 -----------")
+
 		err = utils.CheckTxID(
 			chdr.TxId,
 			shdr.Nonce,

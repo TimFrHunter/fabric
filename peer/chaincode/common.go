@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
 	ccapi "github.com/hyperledger/fabric/peer/chaincode/api"
+	invoketype "github.com/hyperledger/fabric/peer/chaincode/invoketype"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/common/api"
 	pcommon "github.com/hyperledger/fabric/protos/common"
@@ -97,18 +98,43 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 
 	// call with empty txid to ensure production code generates a txid.
 	// otherwise, tests can explicitly set their own txid
-	txID := ""
-
-	proposalResp, err := ChaincodeInvokeOrQuery(
-		spec,
-		channelID,
-		txID,
-		invoke,
-		cf.Signer,
-		cf.Certificate,
-		cf.EndorserClients,
-		cf.DeliverClients,
-		cf.BroadcastClient)
+	// txID := ""
+	txID := txid
+	var proposalResp *pb.ProposalResponse
+	if invokeType == "endorsement" {
+		invoketype.Endorsement(
+			transient,
+			spec,
+			channelID,
+			txID,
+			invoke,
+			cf.Signer,
+			cf.Certificate,
+			cf.EndorserClients,
+		)
+		return nil
+	} else if invokeType == "validation" {
+		proposalResp, err = invoketype.Validation(
+			txID,
+			cf.Signer,
+			cf.DeliverClients,
+			peerAddresses,
+			cf.Certificate,
+			channelID,
+			cf.BroadcastClient,
+		)
+	} else { // not used by the idemix
+		proposalResp, err = ChaincodeInvokeOrQuery(
+			spec,
+			channelID,
+			txID,
+			invoke,
+			cf.Signer,
+			cf.Certificate,
+			cf.EndorserClients,
+			cf.DeliverClients,
+			cf.BroadcastClient)
+	}
 
 	if err != nil {
 		return errors.Errorf("%s - proposal response: %v", err, proposalResp)
@@ -460,9 +486,6 @@ func ChaincodeInvokeOrQuery(
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
-	
-	
-
 	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
@@ -475,7 +498,6 @@ func ChaincodeInvokeOrQuery(
 		}
 		responses = append(responses, proposalResp)
 	}
-	
 
 	if len(responses) == 0 {
 		// this should only happen if some new code has introduced a bug
@@ -491,19 +513,18 @@ func ChaincodeInvokeOrQuery(
 				return proposalResp, nil
 			}
 
-			// UPDATED CUSTOM 
-				type EndorssedResp struct {
-					Txid	string	`json:"txid"`
-					Status	int32	`json:"status"`
-				}
-				endorssedResp := EndorssedResp{txid, responses[0].Response.Status}
-				endorssedJson, err := json.Marshal(endorssedResp)
-				if err != nil {
-					return nil, errors.WithMessage(err, "Failed to generate json for endorssed responses")
-				}
-				logger.Infof("%s", string(endorssedJson))
+			// UPDATED CUSTOM
+			type EndorssedResp struct {
+				Txid   string `json:"txid"`
+				Status int32  `json:"status"`
+			}
+			endorssedResp := EndorssedResp{txid, responses[0].Response.Status}
+			endorssedJson, err := json.Marshal(endorssedResp)
+			if err != nil {
+				return nil, errors.WithMessage(err, "Failed to generate json for endorssed responses")
+			}
+			logger.Infof("%s", string(endorssedJson))
 			// END UPDATED CUSTOM
-
 
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, responses...)
