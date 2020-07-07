@@ -84,6 +84,8 @@ var (
 	connectionProfile     string
 	waitForEvent          bool
 	waitForEventTimeout   time.Duration
+	invokeType            string
+	uid                   string
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -142,6 +144,10 @@ func resetFlags() {
 		fmt.Sprint("Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
 	flags.DurationVar(&waitForEventTimeout, "waitForEventTimeout", 30*time.Second,
 		fmt.Sprint("Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully"))
+	flags.StringVarP(&invokeType, "invokeType", "", common.UndefinedParamValue,
+		fmt.Sprint("Invoke type, support only two values: endorsement, validation"))
+	flags.StringVarP(&uid, "uid", "", common.UndefinedParamValue,
+		fmt.Sprint("uid combined with invoke type, support only two values: endorsement, validation"))
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

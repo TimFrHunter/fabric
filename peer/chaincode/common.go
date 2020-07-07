@@ -98,8 +98,27 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 	// call with empty txid to ensure production code generates a txid.
 	// otherwise, tests can explicitly set their own txid
 	txID := ""
-
-	proposalResp, err := ChaincodeInvokeOrQuery(
+	var proposalResp *pb.ProposalResponse
+	if invokeType == "endorsement" {
+		err = endorsement(
+			spec,
+			channelID,
+			txID,
+			cf.Signer,
+			cf.EndorserClients,
+		)
+		return nil
+	} else if invokeType == "validation" {
+		proposalResp, err = validation(
+			cf.DeliverClients,
+			peerAddresses,
+			cf.Certificate,
+			channelID,
+			cf.BroadcastClient,
+		)
+		return nil
+	}
+	proposalResp, err = ChaincodeInvokeOrQuery(
 		spec,
 		channelID,
 		txID,
@@ -460,9 +479,6 @@ func ChaincodeInvokeOrQuery(
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
-	
-	
-
 	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
@@ -475,7 +491,6 @@ func ChaincodeInvokeOrQuery(
 		}
 		responses = append(responses, proposalResp)
 	}
-	
 
 	if len(responses) == 0 {
 		// this should only happen if some new code has introduced a bug
@@ -491,19 +506,18 @@ func ChaincodeInvokeOrQuery(
 				return proposalResp, nil
 			}
 
-			// UPDATED CUSTOM 
-				type EndorssedResp struct {
-					Txid	string	`json:"txid"`
-					Status	int32	`json:"status"`
-				}
-				endorssedResp := EndorssedResp{txid, responses[0].Response.Status}
-				endorssedJson, err := json.Marshal(endorssedResp)
-				if err != nil {
-					return nil, errors.WithMessage(err, "Failed to generate json for endorssed responses")
-				}
-				logger.Infof("%s", string(endorssedJson))
+			// UPDATED CUSTOM
+			type EndorssedResp struct {
+				Txid   string `json:"txid"`
+				Status int32  `json:"status"`
+			}
+			endorssedResp := EndorssedResp{txid, responses[0].Response.Status}
+			endorssedJson, err := json.Marshal(endorssedResp)
+			if err != nil {
+				return nil, errors.WithMessage(err, "Failed to generate json for endorssed responses")
+			}
+			logger.Infof("%s", string(endorssedJson))
 			// END UPDATED CUSTOM
-
 
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, responses...)
