@@ -1,11 +1,14 @@
 package invoketype
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
+	"reflect"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
@@ -22,7 +25,7 @@ func Endorsement(
 	transient string,
 	spec *pb.ChaincodeSpec,
 	cID string,
-	txID string,
+	uid string,
 	invoke bool,
 	signer msp.SigningIdentity,
 	certificate tls.Certificate,
@@ -47,17 +50,15 @@ func Endorsement(
 		}
 	}
 
-	prop, txid, err := putils.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, txID, tMap)
+	prop, txid, err := putils.CreateChaincodeProposalWithTxIDAndTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, "", tMap)
 	if err != nil {
-		logger.Infof("Erreur-1 %+v", err)
+		logger.Errorf("Erreur-1 %+v", err)
 		return errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
-	logger.Infof("txid:%s", txid)
-	logger.Infof("txID:%s", txID)
 	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
-		logger.Infof("Erreur0 %+v", err)
+		logger.Errorf("Erreur0 %+v", err)
 		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
 	}
 
@@ -66,7 +67,7 @@ func Endorsement(
 	for _, endorser := range endorserClients {
 		proposalResp, err := endorser.ProcessProposal(context.Background(), signedProp)
 		if err != nil {
-			logger.Infof("Erreur1 %+v", err)
+			logger.Errorf("Erreur1 %+v", err)
 			return errors.WithMessage(err, fmt.Sprintf("error endorsing %s", funcName))
 		}
 		responses = append(responses, proposalResp)
@@ -74,16 +75,49 @@ func Endorsement(
 		logger.Infof("%+v", responses)
 
 	}
-
-	endorsementInfo := EndorsementInfo{responses, prop}
-	endorsementInfoJSON, err := json.Marshal(endorsementInfo)
-	if err != nil {
-		logger.Infof("Erreur2 %+v", err)
+	logger.Infof("%v", reflect.TypeOf(signer).String())
+	logger.Infof("Signer: %+v", signer)
+	idemixSignerIdentity, ok := signer.(*msp.IdemixSigningIdentity)
+	if ok != true {
+		logger.Info("Erreur conversion interface SigningIdentity vers structure IdemixSigningIdentity")
 	}
-	fileName := FileName(txid)
-	err = ioutil.WriteFile(fileName, endorsementInfoJSON, 0644)
+	seralizedIdexmiIdentity, err := idemixSignerIdentity.Serialize()
 	if err != nil {
-		logger.Infof("Erreur3 %+v", err)
+		logger.Infof("Erreur serialization idemix %+v", err)
+	}
+	logger.Infof("serializadIdemixIdentity: %v", seralizedIdexmiIdentity)
+	// identityIndentifier := idemixSignerIdentity.Idemixidentity
+	// idemixMSP := identityIndentifier.GetIdemixMsp()
+	// identity, err := idemixMSP.DeserializeIdentity(seralizedIdexmiIdentity)
+	// if err != nil {
+	// 	logger.Infof("Erreur unserialization idemix %+v", err)
+	// }
+	// logger.Infof("UnSerializadIdemixIdentity: %v", identity)
+	// idemixIdentity, ok := identity.(*msp.Idemixidentity)
+	// if ok != true {
+	// 	logger.Infof("Conversion identity to idemixIndentity failed")
+	// }
+	// idemixSignedIdentity, err := idemixIdentity.GetIdemixMsp().GetDefaultSigningIdentity()
+	// if err != nil {
+	// 	logger.Infof("Erreur get idemix Signed identity idemix %+v", err)
+	// }
+	// logger.Infof("singe didientity test: %v", idemixSignedIdentity)
+
+	endorsementInfo := EndorsementInfo{responses, prop, txid, seralizedIdexmiIdentity}
+	//logger.Infof("Apres ajout dans struct global : %+v", endorsementInfo)
+	//logger.Infof("Apres ajout dans struct global sans + : %v", endorsementInfo)
+	buf := &bytes.Buffer{}
+	encoder := json.NewEncoder(buf)
+	encoder.Encode(endorsementInfo)
+	fileName := FileName(uid)
+	file, err := os.Create(fileName)
+	if err != nil {
+		return errors.New("File creation error")
+	}
+	defer file.Close()
+	_, err = io.Copy(file, buf)
+	if err != nil {
+		return errors.New("File copy infos error")
 	}
 	logger.Infof("------Endorsement DONE-------")
 	return nil

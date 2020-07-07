@@ -98,15 +98,15 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 
 	// call with empty txid to ensure production code generates a txid.
 	// otherwise, tests can explicitly set their own txid
-	// txID := ""
-	txID := txid
+	txID := ""
+
 	var proposalResp *pb.ProposalResponse
 	if invokeType == "endorsement" {
 		invoketype.Endorsement(
 			transient,
 			spec,
 			channelID,
-			txID,
+			uid,
 			invoke,
 			cf.Signer,
 			cf.Certificate,
@@ -115,7 +115,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		return nil
 	} else if invokeType == "validation" {
 		proposalResp, err = invoketype.Validation(
-			txID,
+			uid,
 			cf.Signer,
 			cf.DeliverClients,
 			peerAddresses,

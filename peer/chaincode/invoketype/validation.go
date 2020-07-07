@@ -42,21 +42,30 @@ type deliverClient struct {
 
 // Validation for ordering services
 func Validation(
-	txid string,
-	signer msp.SigningIdentity, // nope
+	uid string,
+	signer msp.SigningIdentity,
 	deliverClients []api.PeerDeliverClient, // nope
 	peerAddresses []string, // nope
 	certificate tls.Certificate, // nope
 	channelID string, // nope
 	bc common.BroadcastClient, //nope
 ) (*pb.ProposalResponse, error) {
-
-	endorsementInfo := EndorsementInfo{}
-	fileName := FileName(txid)
-	endorsementInfoJSON, _ := ioutil.ReadFile(fileName)
-	_ = json.Unmarshal([]byte(endorsementInfoJSON), &endorsementInfo)
+	logger.Infof("---- START VALIDATION------")
+	var endorsementInfo EndorsementInfo
+	fileName := FileName(uid)
+	endorsementInfoBytes, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, errors.WithMessage(err, "erreur readfile")
+	}
+	err = json.Unmarshal(endorsementInfoBytes, &endorsementInfo)
+	if err != nil {
+		return nil, errors.WithMessage(err, "erreur json unmarshal")
+	}
 	responses := endorsementInfo.ProposalResponses
 	prop := endorsementInfo.Proposal
+	txid := endorsementInfo.Txid
+	signByte := endorsementInfo.IdemixSigner
+	logger.Infof("File info: %+v", endorsementInfo)
 
 	if len(responses) == 0 {
 		// this should only happen if some new code has introduced a bug
@@ -71,8 +80,32 @@ func Validation(
 			return proposalResp, nil
 		}
 		var waitForEventTimeout time.Duration = 30 * time.Second
-		// assemble a signed transaction (it's an Envelope message)
-		env, err := putils.CreateSignedTx(prop, signer, responses...)
+		idemixSignerIdentity, ok := signer.(*msp.IdemixSigningIdentity)
+		if ok != true {
+			logger.Info("Erreur conversion interface SigningIdentity vers structure IdemixSigningIdentity")
+		}
+		identityIndentifier := idemixSignerIdentity.Idemixidentity
+		idemixMSP := identityIndentifier.GetIdemixMsp()
+		identity, err := idemixMSP.DeserializeIdentity(signByte)
+		if err != nil {
+			logger.Infof("Erreur unserialization idemix %+v", err)
+		}
+		logger.Infof("UnSerializadIdemixIdentity: %v", identity)
+		idemixIdentity, ok := identity.(*msp.Idemixidentity)
+		if ok != true {
+			logger.Infof("Conversion identity to idemixIndentity failed")
+		}
+		idemixSignedIdentity, err := idemixIdentity.GetIdemixMsp().GetDefaultSigningIdentity()
+		if err != nil {
+			logger.Infof("Erreur get idemix Signed identity idemix %+v", err)
+		}
+		logger.Infof("singe didientity test: %v", idemixSignedIdentity)
+
+		// if 1 == 1 {
+		// 	return nil, errors.New("Coupure avant de tout faire sauter ;)")
+		// }
+
+		env, err := putils.CreateSignedTx(prop, idemixSignedIdentity, responses...)
 		if err != nil {
 			return proposalResp, errors.WithMessage(err, "could not assemble transaction")
 		}

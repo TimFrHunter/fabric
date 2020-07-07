@@ -36,7 +36,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"waitForEvent",
 		"waitForEventTimeout",
 		"invokeType",
-		"txid",
+		"uid",
 	}
 	attachFlags(chaincodeInvokeCmd, flagList)
 
