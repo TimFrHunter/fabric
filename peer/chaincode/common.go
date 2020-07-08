@@ -107,16 +107,24 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 			cf.Signer,
 			cf.EndorserClients,
 		)
+		if err != nil {
+			return err
+		}
 		return nil
+
 	} else if invokeType == "validation" {
-		proposalResp, err = validation(
+		err = validation(
 			cf.DeliverClients,
 			peerAddresses,
 			cf.Certificate,
 			channelID,
 			cf.BroadcastClient,
 		)
+		if err != nil {
+			return err
+		}
 		return nil
+
 	}
 	proposalResp, err = ChaincodeInvokeOrQuery(
 		spec,

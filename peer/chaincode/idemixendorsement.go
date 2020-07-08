@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/msp"
 	cm "github.com/hyperledger/fabric/protos/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
@@ -18,9 +17,14 @@ import (
 )
 
 type endorsementFileInfo struct {
-	Responses []*pb.ProposalResponse
 	Txid      string
 	Envelope  *cm.Envelope
+	Endorsers []endorsersResponses
+}
+
+type endorsersResponses struct {
+	Status   int32 // ProposalResponse[0]=>Response=>Status // / A status code that should follow the HTTP status codes.
+	Endorser string
 }
 
 func endorsement(
@@ -58,47 +62,46 @@ func endorsement(
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
 	}
+	var ers []endorsersResponses
 	var responses []*pb.ProposalResponse
 	for _, endorser := range endorserClients {
 		proposalResp, err := endorser.ProcessProposal(context.Background(), signedProp)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("error endorsing %s", funcName))
 		}
+		clientConn, err := pb.GetClientConn(endorser)
+		if err != nil {
+			return err
+		}
+		er := endorsersResponses{Status: proposalResp.Response.Status, Endorser: clientConn.GetEndpoint()}
+		ers = append(ers, er)
 		responses = append(responses, proposalResp)
 	}
-	endorsementFileInfoStruct.Responses = responses
+	endorsementFileInfoStruct.Endorsers = ers
 
-	if len(responses) == 0 {
+	if len(ers) == 0 {
 		// this should only happen if some new code has introduced a bug
 		return errors.New("no proposal responses received - this might indicate a bug")
 	}
-	// all responses will be checked when the signed transaction is created.
-	// for now, just set this so we check the first response's status
-	proposalResp := responses[0]
 
-	if proposalResp != nil {
-		if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
-			return nil
-		}
-		// assemble a signed transaction (it's an Envelope message)
-		env, err := putils.CreateSignedTx(prop, signer, responses...)
-		if err != nil {
-			return errors.WithMessage(err, "could not assemble transaction")
-		}
-		endorsementFileInfoStruct.Envelope = env
-		buf := &bytes.Buffer{}
-		encoder := json.NewEncoder(buf)
-		encoder.Encode(endorsementFileInfoStruct)
-		fileName := "/tmp/" + uid + ".json" //FileName(uid)
-		file, err := os.Create(fileName)
-		if err != nil {
-			return errors.New("File creation error")
-		}
-		defer file.Close()
-		_, err = io.Copy(file, buf)
-		if err != nil {
-			return errors.New("File copy infos error")
-		}
+	// assemble a signed transaction (it's an Envelope message)
+	endorsementFileInfoStruct.Envelope, err = putils.CreateSignedTx(prop, signer, responses...)
+	if err != nil {
+		return errors.WithMessage(err, "could not assemble transaction")
 	}
+	buf := &bytes.Buffer{}
+	encoder := json.NewEncoder(buf)
+	encoder.Encode(endorsementFileInfoStruct)
+	fileName := "/tmp/" + uid + ".json" //FileName(uid)
+	file, err := os.Create(fileName)
+	if err != nil {
+		return errors.New("File creation error")
+	}
+	defer file.Close()
+	_, err = io.Copy(file, buf)
+	if err != nil {
+		return errors.New("File copy infos error")
+	}
+
 	return nil
 }

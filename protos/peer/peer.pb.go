@@ -3,12 +3,16 @@
 
 package peer // import "github.com/hyperledger/fabric/protos/peer"
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-
 import (
+	"errors"
+	fmt "fmt"
+
+	proto "github.com/golang/protobuf/proto"
+
+	math "math"
+
 	context "golang.org/x/net/context"
+
 	grpc "google.golang.org/grpc"
 )
 
@@ -129,6 +133,15 @@ type EndorserClient interface {
 
 type endorserClient struct {
 	cc *grpc.ClientConn
+}
+
+func GetClientConn(ec EndorserClient) (*grpc.ClientConn, error) {
+	//interface to => struct
+	ecs, ok := ec.(*endorserClient)
+	if ok != true {
+		return nil, errors.New("Get Client Connection error when convert interface to struct")
+	}
+	return ecs.cc, nil
 }
 
 func NewEndorserClient(cc *grpc.ClientConn) EndorserClient {

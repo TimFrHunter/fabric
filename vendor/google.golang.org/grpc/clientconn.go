@@ -376,6 +376,11 @@ type ClientConn struct {
 	czData     *channelzData
 }
 
+// GetEndpoint func
+func (cc *ClientConn) GetEndpoint() string {
+	return cc.parsedTarget.Endpoint
+}
+
 // WaitForStateChange waits until the connectivity.State of ClientConn changes from sourceState or
 // ctx expires. A true value is returned in former case and false in latter.
 // This is an EXPERIMENTAL API.
