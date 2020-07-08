@@ -10,11 +10,18 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/msp"
+	cm "github.com/hyperledger/fabric/protos/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 )
+
+type endorsementFileInfo struct {
+	Responses []*pb.ProposalResponse
+	Txid      string
+	Envelope  *cm.Envelope
+}
 
 func endorsement(
 	spec *pb.ChaincodeSpec,
@@ -23,6 +30,7 @@ func endorsement(
 	signer msp.SigningIdentity,
 	endorserClients []pb.EndorserClient,
 ) error {
+	var endorsementFileInfoStruct endorsementFileInfo
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 
 	creator, err := signer.Serialize()
@@ -45,6 +53,7 @@ func endorsement(
 		return errors.WithMessage(err, fmt.Sprintf("error creating proposal for %s", funcName))
 	}
 
+	endorsementFileInfoStruct.Txid = txID
 	signedProp, err := putils.GetSignedProposal(prop, signer)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("error creating signed proposal for %s", funcName))
@@ -57,6 +66,7 @@ func endorsement(
 		}
 		responses = append(responses, proposalResp)
 	}
+	endorsementFileInfoStruct.Responses = responses
 
 	if len(responses) == 0 {
 		// this should only happen if some new code has introduced a bug
@@ -75,9 +85,10 @@ func endorsement(
 		if err != nil {
 			return errors.WithMessage(err, "could not assemble transaction")
 		}
+		endorsementFileInfoStruct.Envelope = env
 		buf := &bytes.Buffer{}
 		encoder := json.NewEncoder(buf)
-		encoder.Encode(env)
+		encoder.Encode(endorsementFileInfoStruct)
 		fileName := "/tmp/" + uid + ".json" //FileName(uid)
 		file, err := os.Create(fileName)
 		if err != nil {
