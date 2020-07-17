@@ -661,7 +661,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	orgName := orgSpec.Domain
 
 	// generate CAs
-	orgDir := filepath.Join(baseDir, "ordererOrganizations", orgName)
+	orgDir := filepath.Join(baseDir, "ordererOrganizations", orgSpec.Name)
 	caDir := filepath.Join(orgDir, "ca")
 	tlsCADir := filepath.Join(orgDir, "tlsca")
 	mspDir := filepath.Join(orgDir, "msp")
@@ -671,7 +671,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 
 	if *rootCaCert != nil {
 		_, rootSigner := ca.GetRootPrivAndSign(caDir, rootPrivByte)
-		signCA, err = ca.NewCARoot(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, rootCert, rootSigner)
+		signCA, err = ca.GetImportedCa(caDir, rootCert, rootSigner)
 	} else { // generate signing CA
 		signCA, err = ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
 	}
