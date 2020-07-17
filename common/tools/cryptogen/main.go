@@ -531,7 +531,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 
 	fmt.Println(orgName)
 	// generate CAs
-	orgDir := filepath.Join(baseDir, "peerOrganizations", orgName)
+	orgDir := filepath.Join(baseDir, "peerOrganizations", orgSpec.Name)
 	caDir := filepath.Join(orgDir, "ca")
 	tlsCADir := filepath.Join(orgDir, "tlsca")
 	mspDir := filepath.Join(orgDir, "msp")
@@ -640,13 +640,13 @@ func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
 func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA, nodeType int, nodeOUs bool) {
 
 	for _, node := range nodes {
-		nodeDir := filepath.Join(baseDir, node.CommonName)
+		nodeDir := filepath.Join(baseDir, node.Hostname)
 		if _, err := os.Stat(nodeDir); os.IsNotExist(err) {
 			currentNodeType := nodeType
 			if node.isAdmin && nodeOUs {
 				currentNodeType = msp.ADMIN
 			}
-			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs)
+			err := msp.GenerateLocalMSP(nodeDir, node.Hostname, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs)
 			if err != nil {
 				fmt.Printf("Error generating local MSP for %v:\n%v\n", node, err)
 				os.Exit(1)

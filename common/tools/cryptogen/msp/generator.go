@@ -235,7 +235,7 @@ func createFolderStructure(rootDir string, local bool) error {
 }
 
 func x509Filename(name string) string {
-	return name + "-cert.pem"
+	return name + ".pem"
 }
 
 func x509Export(path string, cert *x509.Certificate) error {

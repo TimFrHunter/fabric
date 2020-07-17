@@ -122,7 +122,7 @@ func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto
 		PostalCode:         "", //subject.PostalCode[0],
 	}
 
-	err := writeFileInFolder(rootCaCertArg, subject.CommonName, baseDir)
+	err := writeFileInFolder(rootCaCertArg, "ca", baseDir)
 	if err != nil {
 		return ca, err
 	}
@@ -156,7 +156,7 @@ func GetImportedTLSCa(baseDir string, rootCert *x509.Certificate, rootSigner cry
 		PostalCode:         "", //subject.PostalCode[0],
 	}
 
-	err := writeFileInFolder(rootCaCertArg, subject.CommonName, baseDir)
+	err := writeFileInFolder(rootCaCertArg, "ca", baseDir)
 	if err != nil {
 		return ca, err
 	}
@@ -398,7 +398,7 @@ func genCertificateECDSA(baseDir, name string, template, parent *x509.Certificat
 	}
 
 	//write cert out to file
-	fileName := filepath.Join(baseDir, name+"-cert.pem")
+	fileName := filepath.Join(baseDir, name+".pem")
 	certFile, err := os.Create(fileName)
 	if err != nil {
 		return nil, err
