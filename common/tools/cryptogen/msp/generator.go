@@ -89,12 +89,12 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 	// write artifacts to MSP folders
 
 	// the signing CA certificate goes into cacerts
-	err = x509Export(filepath.Join(mspDir, "cacerts", x509Filename(signCA.Name)), signCA.SignCert)
+	err = x509Export(filepath.Join(mspDir, "cacerts", "ca.pem"), signCA.SignCert)
 	if err != nil {
 		return err
 	}
 	// the TLS CA certificate goes into tlscacerts
-	err = x509Export(filepath.Join(mspDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
+	err = x509Export(filepath.Join(mspDir, "tlscacerts", "ca.pem"), tlsCA.SignCert)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 	// generate config.yaml if required
 	if nodeOUs {
 
-		exportConfig(mspDir, filepath.Join("cacerts", x509Filename(signCA.Name)), true)
+		exportConfig(mspDir, filepath.Join("cacerts", "ca.pem"), true)
 	}
 
 	// the signing identity goes into admincerts.
@@ -170,12 +170,12 @@ func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA, nodeOUs b
 	err := createFolderStructure(baseDir, false)
 	if err == nil {
 		// the signing CA certificate goes into cacerts
-		err = x509Export(filepath.Join(baseDir, "cacerts", x509Filename(signCA.Name)), signCA.SignCert)
+		err = x509Export(filepath.Join(baseDir, "cacerts", "ca.pem"), signCA.SignCert)
 		if err != nil {
 			return err
 		}
 		// the TLS CA certificate goes into tlscacerts
-		err = x509Export(filepath.Join(baseDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
+		err = x509Export(filepath.Join(baseDir, "tlscacerts", "ca.pem"), tlsCA.SignCert)
 		if err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA, nodeOUs b
 
 	// generate config.yaml if required
 	if nodeOUs {
-		exportConfig(baseDir, "cacerts/"+x509Filename(signCA.Name), true)
+		exportConfig(baseDir, "cacerts/"+"ca.pem", true)
 	}
 
 	// create a throwaway cert to act as an admin cert
