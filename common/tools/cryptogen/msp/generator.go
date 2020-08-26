@@ -42,8 +42,36 @@ var nodeOUMap = map[int]string{
 	ORDERER: ORDEREROU,
 }
 
-func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
-	tlsCA *ca.CA, nodeType int, nodeOUs bool) error {
+// GenerateLocalMSPForAPI api generation crypto-materials
+func GenerateLocalMSPForAPI(baseDir, cn, name string, sans []string, signCA *ca.CA, tlsCA *ca.CA, nodeType int, nodeOUs bool) error {
+
+	// create api directory
+	err := os.MkdirAll(baseDir, 0755)
+	if err != nil {
+		return err
+	}
+
+	// generate private key
+	priv, _, err := csp.GeneratePrivateKey(baseDir)
+	if err != nil {
+		return err
+	}
+	// get public key
+	ecPubKey, err := csp.GetECPublicKey(priv)
+	if err != nil {
+		return err
+	}
+	// generate X509 certificate using signing CA
+	_, err = signCA.SignCertificateAPI(baseDir, cn,
+		name, nil, nil, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA, tlsCA *ca.CA, nodeType int, nodeOUs bool) error {
 
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")

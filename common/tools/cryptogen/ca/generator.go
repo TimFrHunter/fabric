@@ -32,6 +32,7 @@ type CA struct {
 	Country            string
 	Province           string
 	Locality           string
+	Organization       string
 	OrganizationalUnit string
 	StreetAddress      string
 	PostalCode         string
@@ -121,7 +122,8 @@ func GetImportedCa(baseDir string, rootCert *x509.Certificate, rootSigner crypto
 		Country:            subject.Country[0],
 		Province:           subject.Province[0],
 		Locality:           subject.Locality[0],
-		OrganizationalUnit: "", //subject.OrganizationalUnit[0],
+		Organization:       subject.Organization[0],
+		OrganizationalUnit: subject.OrganizationalUnit[0],
 		StreetAddress:      "", //subject.StreetAddress[0],
 		PostalCode:         "", //subject.PostalCode[0],
 
@@ -156,7 +158,8 @@ func GetImportedTLSCa(baseDir string, rootCert *x509.Certificate, rootSigner cry
 		Country:            subject.Country[0],
 		Province:           subject.Province[0],
 		Locality:           subject.Locality[0],
-		OrganizationalUnit: "", //subject.OrganizationalUnit[0],
+		Organization:       subject.Organization[0],
+		OrganizationalUnit: subject.OrganizationalUnit[0],
 		StreetAddress:      "", //subject.StreetAddress[0],
 		PostalCode:         "", //subject.PostalCode[0],
 	}
@@ -187,7 +190,7 @@ func writeFileInFolder(input, fileName, dir string) error {
 	}
 	var fileNameDst string
 	if fileName == "privateKeyName" {
-		fileNameDst = filepath.Join(dir, fileName+"_sk") //+"-cert.pem")	
+		fileNameDst = filepath.Join(dir, fileName+"_sk") //+"-cert.pem")
 	} else {
 		fileNameDst = filepath.Join(dir, fileName+"-cert.pem") //+"-cert.pem")
 	}
@@ -316,7 +319,41 @@ func (ca *CA) SignCertificate(baseDir, name string, ous, sans []string, pub *ecd
 	//set the organization for the subject
 	subject := subjectTemplateAdditional(ca.Country, ca.Province, ca.Locality, ca.OrganizationalUnit, ca.StreetAddress, ca.PostalCode)
 	subject.CommonName = name
+	subject.Organization = []string{ca.Organization}
+	subject.OrganizationalUnit = append(subject.OrganizationalUnit, ous...)
 
+	template.Subject = subject
+	for _, san := range sans {
+		// try to parse as an IP address first
+		ip := net.ParseIP(san)
+		if ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
+		} else {
+			template.DNSNames = append(template.DNSNames, san)
+		}
+	}
+
+	cert, err := genCertificateECDSA(baseDir, name, &template, ca.SignCert,
+		pub, ca.Signer)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, nil
+}
+
+func (ca *CA) SignCertificateAPI(baseDir, cn, name string, ous, sans []string, pub *ecdsa.PublicKey,
+	ku x509.KeyUsage, eku []x509.ExtKeyUsage) (*x509.Certificate, error) {
+
+	template := x509Template()
+	template.KeyUsage = ku
+	template.ExtKeyUsage = eku
+
+	//set the organization for the subject
+	subject := subjectTemplateAdditional(ca.Country, ca.Province, ca.Locality, ca.OrganizationalUnit, ca.StreetAddress, ca.PostalCode)
+	subject.CommonName = cn
+	subject.Organization = []string{ca.Organization}
 	subject.OrganizationalUnit = append(subject.OrganizationalUnit, ous...)
 
 	template.Subject = subject

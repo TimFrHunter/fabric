@@ -75,6 +75,7 @@ type OrgSpec struct {
 	Template      NodeTemplate `yaml:"Template"`
 	Specs         []NodeSpec   `yaml:"Specs"`
 	Users         UsersSpec    `yaml:"Users"`
+	ApiCommonName string       `yaml:"ApiCommonName"`
 }
 
 type Config struct {
@@ -538,6 +539,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	mspDir := filepath.Join(orgDir, "msp")
 	peersDir := filepath.Join(orgDir, "peers")
 	usersDir := filepath.Join(orgDir, "users")
+	apiDir := filepath.Join(orgDir, "api")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
 
 	if *rootCaCert != nil {
@@ -570,6 +572,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	}
 
 	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER, orgSpec.EnableNodeOUs)
+	generateApiNodes(apiDir, orgSpec, tlsCA, msp.CLIENT)
 
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
@@ -660,6 +663,16 @@ func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA
 			}
 		}
 	}
+}
+
+func generateApiNodes(baseDir string, orgSpec OrgSpec, tlsCA *ca.CA, nodeType int) {
+	apiCN := orgSpec.ApiCommonName
+	err := msp.GenerateLocalMSPForAPI(baseDir, apiCN, "api", nil, tlsCA, tlsCA, nodeType, false)
+	if err != nil {
+		fmt.Printf("Error generating local MSP for api")
+		os.Exit(1)
+	}
+
 }
 
 func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
