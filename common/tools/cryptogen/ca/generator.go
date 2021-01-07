@@ -421,7 +421,7 @@ func x509Template() x509.Certificate {
 	// set expiry to around 10 years
 	expiry := 3650 * 24 * time.Hour
 	// round minute and backdate 5 minutes
-	notBefore := time.Now().Round(time.Minute).Add(-5 * time.Minute).UTC()
+	notBefore := time.Now().UTC()
 
 	//basic template to use
 	x509 := x509.Certificate{
