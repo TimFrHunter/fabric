@@ -380,42 +380,48 @@ func GenerateLocalMSPForAdmin(baseDir, name string, sans []string, signCA *ca.CA
 	if nodeOUs {
 		ous = []string{nodeOUMap[nodeType]}
 	}
-	cert, err := signCA.SignCertificate(filepath.Join(mspDir, "signcerts"),
-		name, ous, nil, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
-	if err != nil {
-		return err
-	}
 
-	// write artifacts to MSP folders
+	// Generate two admins: one for bash setup Admin@COMMON_NAME and another one admin for wallet api usages
+	for i := 0; i < 2; i++ {
+		if i == 1 {
+			name = "admin"
+			ous[0] = "client"
+		}
 
-	// the signing CA certificate goes into cacerts
-	err = x509Export(filepath.Join(mspDir, "cacerts", x509Filename(signCA.Name)), signCA.SignCert)
-	if err != nil {
-		return err
-	}
-	// the TLS CA certificate goes into tlscacerts
-	err = x509Export(filepath.Join(mspDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
-	if err != nil {
-		return err
-	}
-
-	// generate config.yaml if required
-	if nodeOUs {
-
-		exportConfig(mspDir, filepath.Join("cacerts", x509Filename(signCA.Name)), true)
-	}
-
-	// the signing identity goes into admincerts.
-	// This means that the signing identity
-	// of this MSP is also an admin of this MSP
-	// NOTE: the admincerts folder is going to be
-	// cleared up anyway by copyAdminCert, but
-	// we leave a valid admin for now for the sake
-	// of unit tests
-	if !nodeOUs {
-		err = x509Export(filepath.Join(mspDir, "admincerts", x509Filename(name)), cert)
+		cert, err := signCA.SignCertificate(filepath.Join(mspDir, "signcerts"),
+			name, ous, nil, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 		if err != nil {
 			return err
+		}
+		// write artifacts to MSP folders
+
+		// the signing CA certificate goes into cacerts
+		err = x509Export(filepath.Join(mspDir, "cacerts", x509Filename(signCA.Name)), signCA.SignCert)
+		if err != nil {
+			return err
+		}
+		// the TLS CA certificate goes into tlscacerts
+		err = x509Export(filepath.Join(mspDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
+		if err != nil {
+			return err
+		}
+
+		// generate config.yaml if required
+		if nodeOUs {
+			exportConfig(mspDir, filepath.Join("cacerts", x509Filename(signCA.Name)), true)
+		}
+		// the signing identity goes into admincerts.
+		// This means that the signing identity
+		// of this MSP is also an admin of this MSP
+		// NOTE: the admincerts folder is going to be
+		// cleared up anyway by copyAdminCert, but
+		// we leave a valid admin for now for the sake
+		// of unit tests
+		if !nodeOUs {
+			err = x509Export(filepath.Join(mspDir, "admincerts", x509Filename(name)), cert)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -8,9 +8,13 @@ package ca
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -296,6 +300,16 @@ func GetRootPriv(rootCaPriv **os.File) ([]byte, error) {
 	return key, nil
 }
 
+type pkixPublicKey struct {
+	Algo      pkix.AlgorithmIdentifier
+	BitString asn1.BitString
+}
+
+type pkcs1PublicKey struct {
+	N *big.Int
+	E int
+}
+
 func GetRootPrivAndSign(baseDir string, rootPrivByte []byte) (priv bccsp.Key, sign crypto.Signer) {
 	var err error
 	// Private Key
@@ -305,6 +319,27 @@ func GetRootPrivAndSign(baseDir string, rootPrivByte []byte) (priv bccsp.Key, si
 	}
 
 	return priv, sign
+}
+
+func getSkiFromPubKey(pub interface{}) (publicKeyBytes []byte, err error) {
+	switch pub := pub.(type) {
+	case *rsa.PublicKey:
+		publicKeyBytes, err = asn1.Marshal(pkcs1PublicKey{
+			N: pub.N,
+			E: pub.E,
+		})
+		if err != nil {
+			return nil, err
+		}
+	case *ecdsa.PublicKey:
+		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+	case ed25519.PublicKey:
+		publicKeyBytes = pub
+	default:
+		return nil, fmt.Errorf("x509: unsupported public key type: %T", pub)
+	}
+
+	return publicKeyBytes, nil
 }
 
 // SignCertificate creates a signed certificate based on a built-in template
@@ -323,6 +358,24 @@ func (ca *CA) SignCertificate(baseDir, name string, ous, sans []string, pub *ecd
 	subject.OrganizationalUnit = append(subject.OrganizationalUnit, ous...)
 
 	template.Subject = subject
+	// publicKeyBytes, err := getSkiFromPubKey(pub)
+	// ski := sha1.Sum(publicKeyBytes)
+	// template.SubjectKeyId = ski[:]
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// pkBytes, err := x509.MarshalPKIXPublicKey(pub)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// pkix := pkixPublicKey{}
+	// _, err = asn1.Unmarshal(pkBytes, &pkix) // pkBytes
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// template.SubjectKeyId = pkix.BitString.Bytes
+
 	for _, san := range sans {
 		// try to parse as an IP address first
 		ip := net.ParseIP(san)
@@ -415,12 +468,11 @@ func subjectTemplateAdditional(country, province, locality, orgUnit, streetAddre
 func x509Template() x509.Certificate {
 
 	// generate a serial number
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 160)
 	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
 
 	// set expiry to around 10 years
 	expiry := 3650 * 24 * time.Hour
-	// round minute and backdate 5 minutes
 	notBefore := time.Now().UTC()
 
 	//basic template to use
