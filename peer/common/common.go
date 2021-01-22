@@ -245,9 +245,9 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 	if secOpts.UseTLS {
 		caPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))
 		if res != nil {
-			err = errors.WithMessage(res,
-				fmt.Sprintf("unable to load %s.tls.rootcert.file", prefix))
-			return
+			caPEM = []byte(viper.GetString(prefix + ".tls.rootcert.file")) // Changed by Tim to input string instead of file
+			// err = errors.WithMessage(res, fmt.Sprintf("unable to load %s.tls.rootcert.file", prefix))
+			// return
 		}
 		secOpts.ServerRootCAs = [][]byte{caPEM}
 	}
